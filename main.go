@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -12,10 +13,34 @@ import (
 )
 
 func main() {
-	eg := &errgroup.Group{}
+	if len(os.Args) == 1 {
+		fmt.Println("Usage: stdio-wrapper <executable> <args>")
+		os.Exit(1)
+	}
 
 	inPipe := "inPipe"
 	outPipe := "outPipe"
+
+	// Prepare command
+	execPath := os.Args[1]
+	execArgs := os.Args[2:]
+
+	for i := 0; i < len(execArgs); i++ {
+		switch execArgs[i] {
+		case "INPUT":
+			execArgs[i] = inPipe
+		case "OUTPUT":
+			execArgs[i] = outPipe
+		}
+	}
+
+	cmd := exec.Command(execPath, execArgs...)
+	// TODO(or): Add option to attach stdout to cmd output (might be useful in case executable has no file output)
+	// TODO(or): Make this whole execution thing as a library? that way this utility stdio-wrapper can be a cmd but also
+	// people will be able to run this from other Go programs
+
+	// Setup named pipes
+	eg := &errgroup.Group{}
 
 	if err := syscall.Mkfifo(inPipe, 0644); err != nil {
 		log.Fatal(err)
@@ -51,7 +76,7 @@ func main() {
 		return err
 	})
 
-	cmd := exec.Command("./text-doubler", "inPipe", "outPipe")
+	// Run command
 	if err := cmd.Run(); err != nil {
 		log.Fatal(err)
 	}
