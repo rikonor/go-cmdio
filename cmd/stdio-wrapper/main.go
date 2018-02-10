@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
-	"syscall"
 
-	"golang.org/x/sync/errgroup"
+	cmdio "github.com/rikonor/go-cmdio"
 )
 
 func main() {
@@ -17,65 +15,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	inPipe := "inPipe"
-	outPipe := "outPipe"
-
 	// Prepare command
 	execPath := os.Args[1]
 	execArgs := os.Args[2:]
 
-	for i := 0; i < len(execArgs); i++ {
-		switch execArgs[i] {
-		case "INPUT":
-			execArgs[i] = inPipe
-		case "OUTPUT":
-			execArgs[i] = outPipe
-		}
-	}
+	// Wrap command
+	r := os.Stdin
+	w := os.Stdout
 
-	cmd := exec.Command(execPath, execArgs...)
-
-	// Setup named pipes
-	eg := &errgroup.Group{}
-
-	if err := syscall.Mkfifo(inPipe, 0644); err != nil {
+	tmpArgs, closeFn, err := cmdio.Wrap(r, w, execArgs)
+	if err != nil {
 		log.Fatal(err)
 	}
-	defer os.Remove(inPipe)
-
-	if err := syscall.Mkfifo(outPipe, 0644); err != nil {
-		log.Fatal(err)
-	}
-	defer os.Remove(outPipe)
-
-	eg.Go(func() error {
-		fIn, err := os.OpenFile(inPipe, os.O_WRONLY, os.ModeNamedPipe)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer fIn.Close()
-
-		_, err = io.Copy(fIn, os.Stdin)
-		return err
-	})
-
-	eg.Go(func() error {
-		fOut, err := os.OpenFile(outPipe, os.O_RDONLY, os.ModeNamedPipe)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer fOut.Close()
-
-		_, err = io.Copy(os.Stdout, fOut)
-		return err
-	})
+	defer closeFn()
 
 	// Run command
+	cmd := exec.Command(execPath, tmpArgs...)
 	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := eg.Wait(); err != nil {
 		log.Fatal(err)
 	}
 }
