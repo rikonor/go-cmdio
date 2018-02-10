@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -35,9 +34,6 @@ func main() {
 	}
 
 	cmd := exec.Command(execPath, execArgs...)
-	// TODO(or): Add option to attach stdout to cmd output (might be useful in case executable has no file output)
-	// TODO(or): Make this whole execution thing as a library? that way this utility stdio-wrapper can be a cmd but also
-	// people will be able to run this from other Go programs
 
 	// Setup named pipes
 	eg := &errgroup.Group{}
@@ -63,8 +59,6 @@ func main() {
 		return err
 	})
 
-	buf := &bytes.Buffer{}
-
 	eg.Go(func() error {
 		fOut, err := os.OpenFile(outPipe, os.O_RDONLY, os.ModeNamedPipe)
 		if err != nil {
@@ -72,7 +66,7 @@ func main() {
 		}
 		defer fOut.Close()
 
-		_, err = io.Copy(buf, fOut)
+		_, err = io.Copy(os.Stdout, fOut)
 		return err
 	})
 
@@ -82,10 +76,6 @@ func main() {
 	}
 
 	if err := eg.Wait(); err != nil {
-		log.Fatal(err)
-	}
-
-	if _, err := io.Copy(os.Stdout, buf); err != nil {
 		log.Fatal(err)
 	}
 }
