@@ -23,7 +23,7 @@ func main() {
 	r := os.Stdin
 	w := os.Stdout
 
-	tmpArgs, closeFn, err := cmdio.Wrap(r, w, execArgs)
+	tmpArgs, closeFn, err := cmdio.WrapSimple(r, w, execArgs)
 	if err != nil {
 		log.Fatal(err)
 	}

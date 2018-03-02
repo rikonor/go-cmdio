@@ -1,15 +1,14 @@
-stdio-wrapper
----
+# stdio-wrapper
 
 Run an executable that requires input/output files via stdin/stdout.
 
-### Installation
+## Installation
 
 ```bash
-$ go get github.com/rikonor/stdio-wrapper
+go get github.com/rikonor/stdio-wrapper
 ```
 
-### Usage
+## Usage
 
 ```bash
 $ echo Hello | stdio-wrapper <executable> <args>
@@ -19,6 +18,6 @@ $ echo hello | stdio-wrapper text-doubler INPUT OUTPUT
 hellohello
 ```
 
-### License
+## License
 
 MIT
