@@ -30,6 +30,9 @@ func Wrap(rs []io.Reader, ws []io.Writer, execArgs []string) ([]string, CloseFun
 
 	eg := &errgroup.Group{}
 
+	// Setup a slice of tmp args
+	tmpArgs := make([]string, len(execArgs))
+
 	for i := 0; i < len(execArgs); i++ {
 		arg := execArgs[i]
 
@@ -44,7 +47,7 @@ func Wrap(rs []io.Reader, ws []io.Writer, execArgs []string) ([]string, CloseFun
 			}
 
 			pipeName := getNextName()
-			execArgs[i] = pipeName
+			tmpArgs[i] = pipeName
 
 			// Create pipe file
 			if err := syscall.Mkfifo(pipeName, 0644); err != nil {
@@ -76,7 +79,7 @@ func Wrap(rs []io.Reader, ws []io.Writer, execArgs []string) ([]string, CloseFun
 			}
 
 			pipeName := getNextName()
-			execArgs[i] = pipeName
+			tmpArgs[i] = pipeName
 
 			// Create pipe file
 			if err := syscall.Mkfifo(pipeName, 0644); err != nil {
@@ -97,6 +100,10 @@ func Wrap(rs []io.Reader, ws []io.Writer, execArgs []string) ([]string, CloseFun
 				_, err = io.Copy(ws[idx-1], fOut)
 				return errors.Wrap(err, "failed to copy from pipe to writer")
 			})
+
+		// Use arg as-is
+		default:
+			tmpArgs[i] = arg
 		}
 	}
 
@@ -112,7 +119,7 @@ func Wrap(rs []io.Reader, ws []io.Writer, execArgs []string) ([]string, CloseFun
 		return eg.Wait()
 	}
 
-	return execArgs, closeFn, nil
+	return tmpArgs, closeFn, nil
 }
 
 // WrapSimple wraps a command such that it uses named pipes attached to the given reader
@@ -122,13 +129,18 @@ func WrapSimple(r io.Reader, w io.Writer, execArgs []string) ([]string, CloseFun
 	inPipe := "inPipe"
 	outPipe := "outPipe"
 
+	// Setup a slice of tmp args
+	tmpArgs := make([]string, len(execArgs))
+
 	// Prepare args
 	for i := 0; i < len(execArgs); i++ {
 		switch execArgs[i] {
 		case "INPUT":
-			execArgs[i] = inPipe
+			tmpArgs[i] = inPipe
 		case "OUTPUT":
-			execArgs[i] = outPipe
+			tmpArgs[i] = outPipe
+		default:
+			tmpArgs[i] = execArgs[i]
 		}
 	}
 
@@ -180,5 +192,5 @@ func WrapSimple(r io.Reader, w io.Writer, execArgs []string) ([]string, CloseFun
 		return eg.Wait()
 	}
 
-	return execArgs, closeFn, nil
+	return tmpArgs, closeFn, nil
 }
