@@ -1,7 +1,6 @@
 package cmdio
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
+	"github.com/rikonor/go-cmdio/rand"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -21,12 +21,6 @@ type CloseFunc func() error
 func Wrap(rs []io.Reader, ws []io.Writer, execArgs []string) ([]string, CloseFunc, error) {
 	// Keep track of files to remove later
 	toRemove := []string{}
-
-	i := 0
-	getNextName := func() string {
-		i++
-		return fmt.Sprintf("pipe%d", i)
-	}
 
 	eg := &errgroup.Group{}
 
@@ -46,7 +40,7 @@ func Wrap(rs []io.Reader, ws []io.Writer, execArgs []string) ([]string, CloseFun
 				return nil, nil, errors.Wrap(err, "failed to parse reader index from arg name")
 			}
 
-			pipeName := getNextName()
+			pipeName := rand.String()
 			tmpArgs[i] = pipeName
 
 			// Create pipe file
@@ -78,7 +72,7 @@ func Wrap(rs []io.Reader, ws []io.Writer, execArgs []string) ([]string, CloseFun
 				return nil, nil, errors.Wrap(err, "failed to parse writer index from arg name")
 			}
 
-			pipeName := getNextName()
+			pipeName := rand.String()
 			tmpArgs[i] = pipeName
 
 			// Create pipe file
@@ -126,8 +120,8 @@ func Wrap(rs []io.Reader, ws []io.Writer, execArgs []string) ([]string, CloseFun
 // and writer instead of using actual files.
 func WrapSimple(r io.Reader, w io.Writer, execArgs []string) ([]string, CloseFunc, error) {
 	// Setup pipe names
-	inPipe := "inPipe"
-	outPipe := "outPipe"
+	inPipe := rand.String()
+	outPipe := rand.String()
 
 	// Setup a slice of tmp args
 	tmpArgs := make([]string, len(execArgs))
